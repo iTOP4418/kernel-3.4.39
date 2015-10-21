@@ -573,4 +573,6 @@ config SLSIAP_BACKWARD_CAMERA
       If you say yes here, you can view camera as soon as kernel booting, and
       this driver switch on/off camera by gpio interrupt
 
+source "drivers/misc/mediatek/Kconfig"
+
 endmenu

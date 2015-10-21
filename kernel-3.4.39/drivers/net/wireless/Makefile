@@ -65,3 +65,6 @@ obj-$(CONFIG_BCM4354) += DHD_REL_1_141_64/
 
 obj-$(CONFIG_BRCMFMAC)	+= brcm80211/
 obj-$(CONFIG_BRCMSMAC)	+= brcm80211/
+
+obj-$(CONFIG_MTK_COMBO_WIFI)	+= combo_mt66xx/
+obj-$(CONFIG_MTK_MT5931)	+= mt5931/

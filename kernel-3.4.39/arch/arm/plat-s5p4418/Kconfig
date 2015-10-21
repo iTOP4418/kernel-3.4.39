@@ -39,6 +39,11 @@ choice
 		help
    	 		Support for the drone2 low cost board.
 
+       	config PLAT_S5P4418_TOPEET
+		bool "TOPEET: Android topeet board"
+		help
+   	 		Support for the topeet board.
+
 endchoice
 
 #

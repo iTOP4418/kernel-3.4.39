@@ -58,3 +58,4 @@ obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_STMPE811_ADC)	+= stmpe811-adc.o
 obj-$(CONFIG_AUDIENCE_ES305)	+= es305.o
 obj-$(CONFIG_SLSIAP_BACKWARD_CAMERA) += backward-camera.o
+obj-$(CONFIG_MTK_WIRELESS_SOLUTION)	+= mediatek/

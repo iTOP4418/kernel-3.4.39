@@ -27,6 +27,11 @@ ifeq ($(CONFIG_PLAT_S5P6818_ASB),y)
 PLATBOARD :=asb
 endif
 
+
+ifeq ($(CONFIG_PLAT_S5P6818_TOPEET),y)
+PLATBOARD :=topeet
+endif
+
 #
 # Build options
 #

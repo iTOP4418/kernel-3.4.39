@@ -629,5 +629,10 @@ config TILE_SROM
 	  device appear much like a simple EEPROM, and knows
 	  how to partition a single ROM for multiple purposes.
 
+config BUZZER_CTL
+        bool "Enable BUZZER config"
+        default y
+        help
+          Enable BUZZER config
 endmenu
 

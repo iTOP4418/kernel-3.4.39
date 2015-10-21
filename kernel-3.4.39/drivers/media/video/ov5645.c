@@ -31,7 +31,16 @@
 #include <media/v4l2-ctrls.h>
 #include <linux/delay.h>
 
-#define MODULE_NAME "OV5645"
+//#define MODULE_NAME "OV5645"
+
+
+#include "ov5640.h"
+
+
+#define MODULE_NAME "OV5640"
+
+
+#define  OV5645_DEBUG  1
 
 // TODO : move this to PLAT/device.c
 #if 0
@@ -83,10 +92,12 @@ enum {
 };
 #endif
 
+#if 0
 struct regval_list {
 	u16 reg_num;
 	u8 value;
 };
+#endif
 
 static int ov5645_video_probe(struct i2c_client *client);
 /****************************************************************************************
@@ -729,7 +740,7 @@ struct ov5645_win_size {
     const struct regval_list    *lsc_regs;
     unsigned int                *frame_rate_array;
 };
-
+#if 0
 typedef struct {
     unsigned int max_shutter;
     unsigned int shutter;
@@ -739,10 +750,12 @@ typedef struct {
     unsigned int extra_line;
 } exposure_param_t;
 
+
 enum prev_capt {
     PREVIEW_MODE = 0,
     CAPTURE_MODE
 };
+#endif
 
 struct ov5645_priv {
     struct v4l2_subdev                  subdev;
@@ -841,9 +854,18 @@ static const struct ov5645_win_size ov5645_win_uxga = {
     .frame_rate_array = frame_rate_uxga,
 };
 
+static const struct ov5645_win_size ov5645_wins_vga = {
+    .name    = "VGA",    /* VGA: 640*480 */
+    .width   = VGA_WIDTH,
+    .height  = VGA_HEIGHT,
+    .win_regs    = ov5640_qsxga_to_vga_regs,
+    .frame_rate_array = frame_rate_uxga,
+};
+
 static const struct ov5645_win_size *ov5645_win[] = {
     &ov5645_win_svga,
     &ov5645_win_uxga,
+    &ov5645_wins_vga,
 };
 
 /****************************************************************************************
@@ -1548,7 +1570,7 @@ static int ov5645_g_chip_ident(struct v4l2_subdev *sd, struct v4l2_dbg_chip_iden
 static int ov5645_s_power(struct v4l2_subdev *sd, int on)
 {
     /* used when suspending */
-    /* printk("%s: on %d\n", __func__, on); */
+     printk("%s: on %d\n", __func__, on);
     if (!on) {
         struct ov5645_priv *priv = to_priv(sd);
         priv->initialized = false;
@@ -1567,6 +1589,8 @@ static const struct v4l2_subdev_core_ops ov5645_subdev_core_ops = {
 /**
  * video ops
  */
+
+#if 0
 static int ov5645_s_stream(struct v4l2_subdev *sd, int enable)
 {
     struct i2c_client *client = v4l2_get_subdevdata(sd);
@@ -1575,6 +1599,8 @@ static int ov5645_s_stream(struct v4l2_subdev *sd, int enable)
 
     printk("%s: enable %d, initialized %d\n", __func__, enable, priv->initialized);
     ov5645_video_probe(client);
+
+
     if (enable) {
         if (!priv->win || !priv->cfmt) {
             dev_err(&client->dev, "norm or win select error\n");
@@ -1612,6 +1638,101 @@ static int ov5645_s_stream(struct v4l2_subdev *sd, int enable)
 
     return ret;
 }
+#else
+
+
+static int ov5645_s_stream(struct v4l2_subdev *sd, int enable)
+{
+
+      struct i2c_client *client = v4l2_get_subdevdata(sd);
+      struct ov5645_priv *priv = to_priv(client);
+
+    int ret = 0;
+
+    ov5645_video_probe(client);
+    printk("%s: enable %d, initialized %d\n", __func__, enable, priv->initialized);
+
+    priv->initialized =false;
+
+    if (enable)
+    {
+        if (!priv->win || !priv->cfmt) {
+            dev_err(&client->dev, "norm or win select error\n");
+            return -EPERM;
+        }
+         /* write init regs */
+        if (!priv->initialized)
+        {
+         //   if (!check_id(client))
+              //  return -EINVAL;
+
+            printk("%s  line %d  ..CCIR656 CTRL00 enable & disable clip data.....\n",__func__,__LINE__);
+            i2cc_set_reg(client, 0x4730,0x03);  //disable clip data
+
+
+            printk("%s  line %d  ..clock from pad input........\n",__func__,__LINE__);
+            i2cc_set_reg(client, 0x3103,0x11);  //clock from pad input
+
+
+            printk("%s  line %d init ov5640 regs...........\n",__func__,__LINE__);
+            ret = write_regs(client, sensor_init_data,ARRAY_SIZE(sensor_init_data));
+        //    int ret = write_regs(client, ov5640_init_regs,ARRAY_SIZE(ov5640_init_regs));
+            if (ret < 0)
+            {
+                printk(KERN_ERR "%s: failed to ov5640 init regs\n", __func__);
+                return -EIO;
+            }
+
+            priv->initialized = true;
+        }
+
+      //  ret = sp2518_write_array(client, priv->win->win_regs);
+      //  if (ret < 0) {
+        //    printk(KERN_ERR "%s: failed to sp2518_write_array win regs\n", __func__);
+          //  return -EIO;
+       // }
+
+          printk("%s  line %d  ..set width=640 height=480........\n",__func__,__LINE__);
+
+#if 1
+        //width 640
+          i2cc_set_reg(client, 0x3808, 0x02);
+          i2cc_set_reg(client, 0x3809, 0x80);
+
+          //height  480
+          i2cc_set_reg(client, 0x380a, 0x01);
+          i2cc_set_reg(client, 0x380b, 0xe0);
+#endif
+
+
+//        ret = sp2518_set_mbusformat(client, priv->cfmt);
+  //      if (ret < 0) {
+    //        printk(KERN_ERR "%s: failed to sp2518_set_mbusformat()\n", __func__);
+      //      return -EIO;
+           //yuyv
+          printk("%s  line %d  ..set yuyv format.......\n",__func__,__LINE__);
+          i2cc_set_reg(client, 0x4300, 0x30);
+          i2cc_set_reg(client, 0x501f, 0x00);
+
+
+    } else
+    {
+
+        //sp2518_write_array(client, sp2518_disable_regs);
+
+        INFO_PURLPLE("stream down\n");
+        // set regs to enter sleep mode, already in DVP mode
+        i2cc_set_reg(client, 0x3008, 0x42);
+
+    }
+
+    return ret;
+}
+
+
+
+
+#endif
 
 static int ov5645_enum_framesizes(struct v4l2_subdev *sd, struct v4l2_frmsizeenum *fsize)
 {
@@ -1720,6 +1841,15 @@ static int ov5645_try_mbus_fmt(struct v4l2_subdev *sd,
     return 0;
 }
 
+
+
+
+
+
+
+
+
+
 static int ov5645_s_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *mf)
 {
     /* struct i2c_client *client = v4l2_get_subdevdata(sd); */
@@ -1791,8 +1921,15 @@ static void ov5645_priv_init(struct ov5645_priv * priv)
     priv->timeperframe.denominator = 12;//30;
     priv->timeperframe.numerator = 1;
     priv->win = &ov5645_win_svga;
+    priv->initialized = false;
+
+
+
+    printk("%s...................................\n",__func__);
+
 }
 
+#if 0
 static int ov5645_video_probe(struct i2c_client *client)
 {
 	int ret;
@@ -1825,14 +1962,48 @@ static int ov5645_video_probe(struct i2c_client *client)
 
 	return 0;
 }
+#else
 
+static int ov5645_video_probe(struct i2c_client *client)
+{
+
+
+    //struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+    unsigned char pid;
+    unsigned char version;
+    //int err = -EINVAL;
+
+
+    // check and show product ID and manufacturer ID
+    reg_read(client, 0x300a, &pid);
+    reg_read(client, 0x300b, &version);
+
+    printk("%s: version = 0x%x%x\n", __FUNCTION__, pid, version);
+
+    if (OV5640 != VERSION(pid, version)) {
+        OV_ERR("ov5640 probed failed!!\n");
+        return (-ENODEV);
+    }
+
+    //priv->nmodel = V4L2_IDENT_AMBIGUOUS;
+
+
+    INFO_BLUE("ov5640 device detect success\n");
+
+    return 0;
+
+
+
+}
+#endif
 static int ov5645_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
     struct ov5645_priv *priv;
     struct v4l2_subdev *sd;
     int ret;
 
-    priv = kzalloc(sizeof(struct ov5645_priv), GFP_KERNEL);
+    priv =(struct ov5645_priv *)kzalloc(sizeof(struct ov5645_priv), GFP_KERNEL);
     if (!priv)
         return -ENOMEM;
 
@@ -1843,7 +2014,7 @@ static int ov5645_probe(struct i2c_client *client, const struct i2c_device_id *i
     sd = &priv->subdev;
     strcpy(sd->name, MODULE_NAME);
 
-    ov5645_video_probe(client);
+   // ov5645_video_probe(client);
 
     /* register subdev */
     v4l2_i2c_subdev_init(sd, client, &ov5645_subdev_ops);

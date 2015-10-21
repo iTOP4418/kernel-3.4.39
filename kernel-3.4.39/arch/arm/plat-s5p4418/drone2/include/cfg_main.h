@@ -34,7 +34,19 @@
 /*------------------------------------------------------------------------------
  * 	BUS config
  */
+/* modify by cym 20150917 */
+#if 0
 #define CFG_BUS_RECONFIG_ENB					0
+#else
+#define CFG_BUS_RECONFIG_ENB                                    1
+
+#define CFG_BUS_RECONFIG_DREXQOS                                0
+#define CFG_BUS_RECONFIG_TOPBUSSI                               0
+#define CFG_BUS_RECONFIG_BOTTOMBUSSI                    0
+#define CFG_BUS_RECONFIG_BOTTOMBUSQOS                   0
+#define CFG_BUS_RECONFIG_DISPBUSSI                              1
+#endif
+/* end modify */
 
 /*------------------------------------------------------------------------------
  * 	Uart
@@ -56,6 +68,16 @@
 #define	CFG_ETHER_EXT_IRQ_NUM					(IRQ_GPIO_C_START + 26)
 
 /*------------------------------------------------------------------------------
+ *      GMAC PHY
+ */
+//#define CFG_ETHER_LOOPBACK_MODE                                       0       /* 0: disable, 1: 10M, 2: 100M(x), 3: 1000M(x) */
+
+/*for rtl8211*/ //hdc 20150430
+#define CFG_ETHER_GMAC_PHY_IRQ_NUM                              (IRQ_GPIO_E_START + 23)
+#define CFG_ETHER_GMAC_PHY_RST_NUM                              (PAD_GPIO_E + 22)
+
+
+/*------------------------------------------------------------------------------
  * 	Nand (HWECC)
  */
 #define CFG_NAND_ECC_BYTES 						1024
@@ -65,7 +87,8 @@
 /*------------------------------------------------------------------------------
  *	Nand (GPIO)
  */
-#define CFG_IO_NAND_nWP							(PAD_GPIO_C + 27)		/* GPIO */
+//this gpio that be used for mt6620,cancel by dg .
+//#define CFG_IO_NAND_nWP							(PAD_GPIO_C + 27)		/* GPIO */
 
 /*------------------------------------------------------------------------------
  * 	Display (DPC and MLC)
@@ -85,7 +108,13 @@
 #define	CFG_DISP_PRI_LCD_HEIGHT_MM				85
 
 #define CFG_DISP_PRI_RESOL_WIDTH          		1024	// X Resolution
+/* modify by cym 20150811 */
+#if 0
 #define CFG_DISP_PRI_RESOL_HEIGHT				600	// Y Resolution
+#else
+#define CFG_DISP_PRI_RESOL_HEIGHT                               768     // Y Resolution
+#endif
+/* end modify */
 
 #define CFG_DISP_PRI_HSYNC_SYNC_WIDTH            20
 #define CFG_DISP_PRI_HSYNC_BACK_PORCH           160
@@ -129,6 +158,12 @@
 #define CFG_LCD_PRI_PWM_DUTYCYCLE				50		/* (%) */
 
 /*------------------------------------------------------------------------------
+ *      PPM
+ */
+#define CFG_PPM_CLK                     4000000
+
+
+/*------------------------------------------------------------------------------
  * 	Audio I2S (0, 1, 2)
  */
 #define	CFG_AUDIO_I2S0_MASTER_MODE				CTRUE	// CTRUE
@@ -162,6 +197,8 @@
 #define CFG_I2C0_CLK							100000
 #define CFG_I2C1_CLK							400000	/* TOUCH */
 #define CFG_I2C2_CLK							100000
+/* add by cym 20150811 */
+#define CFG_I2C3_CLK                                                    100000
 
 /*------------------------------------------------------------------------------
  * 	SPI
@@ -203,7 +240,11 @@
  */
 #define	CFG_SDMMC0_DETECT_IO					(PAD_GPIO_ALV + 1)	/* external cd */
 
-
+/*------------------------------------------------------------------------------
+ *      PMIC
+ */
+/* modify by cym 20150811 */
+#ifdef CONFIG_REGULATOR_NXE2000
 /*------------------------------------------------------------------------------
  * 	NXE2000 PMIC
  */
@@ -221,6 +262,25 @@
 #define CFG_GPIO_PMIC_LOWBAT_DET				(-1)//(PAD_GPIO_ALV + 3)		/* Critical low battery detect */
 #define CFG_GPIO_PMIC_INTR						(PAD_GPIO_ALV + 4)
 #define CFG_PMIC_BAT_CHG_SUPPORT				(1)
+#else
+/* AXP228 PMIC  */
+#define CFG_SW_UBC_ENABLE                       (1)                     /* S/W UBC Check */
+#define CFG_USB_DET_FROM_PMIC_INT               (0)                     /* 0 : GPIO interrupt (CFG_GPIO_PMIC_VUSB_DET)          1 : PMIC interrupt (FVUSBDETSINT) */
+//#define CFG_GPIO_OTG_USBID_DET                (PAD_GPIO_D + 16)       /* USB ID Deteict */
+//#define CFG_GPIO_OTG_VBUS_DET                 (PAD_GPIO_D + 21)       /* USB OTG Power Enable */
+#define CFG_GPIO_OTG_VBUS_DET                   (PAD_GPIO_C + 28)       /* USB OTG Power Enable */
+#define CFG_GPIO_PMIC_VUSB_DET                  (PAD_GPIO_ALV + 2)      /* Choice for SW_UBC or Wake-up*/
+#define CFG_GPIO_PMIC_LOWBAT_DET                (-1)                    /* Critical low battery detect */
+#define CFG_PMIC_BAT_CHG_SUPPORT                (1)
+
+/* AXP228 PMIC  */
+#define CFG_PMIC_I2_CBUS                        3                       /* i2c channel */
+#define CFG_BATTERY_CAP                         3000                    /* Battery Capacity */
+
+/* PMIC Common*/
+#define CFG_GPIO_PMIC_INTR                      (PAD_GPIO_ALV + 4)      /* PMIC Interrupt */
+#endif
+/* end modify */
 
 /*------------------------------------------------------------------------------
  * 	Suspend mode

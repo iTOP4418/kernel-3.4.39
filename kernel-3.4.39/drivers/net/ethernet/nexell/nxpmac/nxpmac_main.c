@@ -846,6 +846,9 @@ static int stmmac_init_phy(struct net_device *dev)
 	int interface = priv->plat->interface;
 	unsigned bmcr = 0;
 
+	/* add by cym 20150912 */
+	unsigned short val = 0;
+	/* end add */
 	priv->oldlink = 0;
 	priv->speed = 0;
 	priv->oldduplex = -1;
@@ -906,6 +909,66 @@ static int stmmac_init_phy(struct net_device *dev)
 
 	phy_write(phydev, MII_BMCR, bmcr);
 #endif
+/* add by cym 20150912 for AR8031 */
+#if 1
+	//printk("init AR8031 ...\n");
+        /* AR8031 phy SmartEEE feature cause link status generates glitch,
+         * which cause ethernet link down/up issue, so disable SmartEEE
+         */
+        phy_write(phydev, 0xd, 0x3);
+        phy_write(phydev, 0xe, 0x805d);
+        phy_write(phydev, 0xd, 0x4003);
+        val = phy_read(phydev, 0xe);
+        val &= ~(0x1 << 8);
+        phy_write(phydev, 0xe, val);
+	udelay(100);
+#if 1
+        /* To enable AR8031 ouput a 125MHz clk from CLK_25M */
+        phy_write(phydev, 0xd, 0x7);
+        phy_write(phydev, 0xe, 0x8016);
+        phy_write(phydev, 0xd, 0x4007);
+        val = phy_read(phydev, 0xe);
+
+        val &= 0xffe3;
+        val |= 0x18;
+        phy_write(phydev, 0xe, val);
+	udelay(100);
+#endif
+        /* introduce tx clock delay */
+        phy_write(phydev, 0x1d, 0x5);
+        val = phy_read(phydev, 0x1e);
+        val |= 0x0100;
+        phy_write(phydev, 0x1e, val);
+	udelay(100);
+
+        /*check phy power*/
+        val = phy_read(phydev, 0x0);
+        if(val & BMCR_PDOWN)
+	//if (val & 0x0800)
+                phy_write(phydev, 0x0, (val & ~BMCR_PDOWN));
+	//	phy_write(phydev, 0x0, (val & ~0x0800));
+
+	
+	/*set AR8031 debug reg 0xb to hibernate power*/
+#if 0
+        phy_write(phydev, 0x1d, 0xb);
+        val = phy_read(phydev, 0x1e);
+
+        val |= 0x8000;
+        phy_write(phydev, 0x1e, val);
+#endif
+#if 0
+	printk("PHY ID:0x%x%x\n", phy_read(phydev, 0x2), phy_read(phydev, 0x3));
+	{
+		int i = 0;
+		for(i=0; i<32; i++)
+		{
+			printk("REG[0x%x] = 0x%x\n", i, phy_read(phydev, i));
+		}
+	}
+#endif
+#endif
+/* end add */
 
 	phydev->autoneg = priv->plat->autoneg;
 	phydev->speed   = priv->plat->speed;

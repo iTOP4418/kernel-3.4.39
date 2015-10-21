@@ -89,6 +89,7 @@ obj-$(CONFIG_VIDEO_TW9900)	+= tw/
 obj-$(CONFIG_VIDEO_S5K5CAGX)    += s5k5cagx.o
 obj-$(CONFIG_VIDEO_S5K4ECGX)	+= s5k4ecgx.o
 obj-$(CONFIG_VIDEO_SP2518)		+= sp2518.o
+obj-$(CONFIG_VIDEO_OV5640)		+= ov5640.o
 obj-$(CONFIG_VIDEO_SP0A19)		+= sp0a19.o
 obj-$(CONFIG_VIDEO_SP0838)		+= sp0838.o
 obj-$(CONFIG_VIDEO_GC2035)		+= gc2035.o

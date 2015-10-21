@@ -21,6 +21,12 @@
 #include <linux/pwm_backlight.h>
 #include <linux/slab.h>
 
+/* add by cym 20150928 */
+#include <mach/gpio.h>
+#include <mach/platform.h>
+#include <mach/devices.h>
+#include <mach/soc.h>
+/* end add */
 struct pwm_bl_data {
 	struct pwm_device	*pwm;
 	struct device		*dev;
@@ -32,6 +38,36 @@ struct pwm_bl_data {
 					int brightness);
 	int			(*check_fb)(struct device *, struct fb_info *);
 };
+/* add by cym 20150928 turn on lcd vcc */
+int lcd_vdd_enable(int enable)
+{
+        #define MCU_VG_EN       (PAD_GPIO_C + 24)
+
+        if(gpio_request(MCU_VG_EN, "MCU_VG_EN"))
+        {
+                printk(KERN_ERR "failed to request MCU_VG_EN for lcd_vdd en\n");
+
+		return -1;
+        }
+        else
+        {
+		if(enable)
+		{
+			printk("LCD VDD enable.\n");
+                	gpio_direction_output(MCU_VG_EN, 1);
+		}
+		else
+		{
+			printk("LCD VDD disable.\n");
+			gpio_direction_output(MCU_VG_EN, 0);
+		}
+
+                gpio_free(MCU_VG_EN);
+        }
+
+	return 0;
+}
+        /* end add */
 
 static int pwm_backlight_update_status(struct backlight_device *bl)
 {
@@ -139,6 +175,9 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	bl->props.brightness = data->dft_brightness;
 	backlight_update_status(bl);
 
+	/* add by cym 20150928 turn on lcd vcc */
+	lcd_vdd_enable(1);
+	/* end add */
 	platform_set_drvdata(pdev, bl);
 	return 0;
 
@@ -171,6 +210,9 @@ static int pwm_backlight_suspend(struct device *dev)
 	struct backlight_device *bl = dev_get_drvdata(dev);
 	struct pwm_bl_data *pb = dev_get_drvdata(&bl->dev);
 
+	/* add by cym 20150928 turn on lcd vcc */
+        lcd_vdd_enable(0);
+        /* end add */
 	if (pb->notify)
 		pb->notify(pb->dev, 0);
 	pwm_config(pb->pwm, 0, pb->period);
@@ -185,6 +227,11 @@ static int pwm_backlight_resume(struct device *dev)
 	struct backlight_device *bl = dev_get_drvdata(dev);
 
 	backlight_update_status(bl);
+
+	/* add by cym 20150928 turn on lcd vcc */
+        lcd_vdd_enable(1);
+        /* end add */
+
 	return 0;
 }
 

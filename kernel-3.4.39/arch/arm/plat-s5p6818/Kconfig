@@ -39,6 +39,11 @@ choice
 		bool "ASB: Android ASB board"
 		help
    	 		Support for the ASB board.
+    
+       	config PLAT_S5P6818_TOPEET
+		bool "TOPEET: Android topeet board"
+		help
+   	 		Support for the topeet board.
 
 
 endchoice

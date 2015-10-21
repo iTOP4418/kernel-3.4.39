@@ -28,6 +28,10 @@ PLATBOARD :=dronel
 endif
 
 
+ifeq ($(CONFIG_PLAT_S5P4418_TOPEET),y)
+PLATBOARD :=topeet
+endif
+
 #
 # Build options
 #

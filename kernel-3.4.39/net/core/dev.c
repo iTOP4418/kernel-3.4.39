@@ -1046,6 +1046,8 @@ rollback:
 	return err;
 }
 
+//add by dg for mt6620 modules compile
+EXPORT_SYMBOL(dev_change_name);
 /**
  *	dev_set_alias - change ifalias of a device
  *	@dev: device
