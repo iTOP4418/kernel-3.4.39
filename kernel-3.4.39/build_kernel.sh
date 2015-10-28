@@ -10,7 +10,6 @@ make ARCH=arm   CROSS_COMPILE=/media/work/s5p4418/kitkat-s5p4418drone/android/pr
 #install mt6620 moudles to android/device/nexell/drone2/mt6620
 #cp ./drivers/misc/mediatek/combo_mt66xx/wmt/*.ko    ../../../device/nexell/drone2/mt6620/  -rf
 #cp ./drivers/misc/mediatek/combo_mt66xx/fm/*.ko    ../../../device/nexell/drone2/mt6620/  -rf
-#cp ./drivers/misc/mediatek/combo_mt66xx/bt/uhid/*.ko    ../../../device/nexell/drone2/mt6620/  -rf
 #cp ./drivers/net/wireless/combo_mt66xx/mt6620/wlan/*.ko  ../../../device/nexell/drone2/mt6620/  -rf   
 
 

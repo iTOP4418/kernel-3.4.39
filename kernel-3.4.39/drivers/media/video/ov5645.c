@@ -1663,25 +1663,28 @@ static int ov5645_s_stream(struct v4l2_subdev *sd, int enable)
          /* write init regs */
         if (!priv->initialized)
         {
-         //   if (!check_id(client))
-              //  return -EINVAL;
-
-            printk("%s  line %d  ..CCIR656 CTRL00 enable & disable clip data.....\n",__func__,__LINE__);
-            i2cc_set_reg(client, 0x4730,0x03);  //disable clip data
 
 
-            printk("%s  line %d  ..clock from pad input........\n",__func__,__LINE__);
-            i2cc_set_reg(client, 0x3103,0x11);  //clock from pad input
+            ov5640_video_probe(client);
 
+            reset_ov5640(client);
 
-            printk("%s  line %d init ov5640 regs...........\n",__func__,__LINE__);
-            ret = write_regs(client, sensor_init_data,ARRAY_SIZE(sensor_init_data));
-        //    int ret = write_regs(client, ov5640_init_regs,ARRAY_SIZE(ov5640_init_regs));
-            if (ret < 0)
-            {
-                printk(KERN_ERR "%s: failed to ov5640 init regs\n", __func__);
-                return -EIO;
-            }
+           printk("%s  line %d init ov5640 regs...........\n",__func__,__LINE__);
+           ret = write_regs(client, sensor_init_data,ARRAY_SIZE(sensor_init_data));
+       //    int ret = write_regs(client, ov5640_init_regs,ARRAY_SIZE(ov5640_init_regs));
+           if (ret < 0)
+           {
+               printk(KERN_ERR "%s: failed to ov5640 init regs\n", __func__);
+               return -EIO;
+           }
+#if 1
+           //this is very important,it must be CCIR656 enable,and after init ov5640 regs.
+           printk("%s  line %d  ..CCIR656 CTRL00 enable .....\n",__func__,__LINE__);
+           i2cc_set_reg(client, 0x4730,0x01);
+
+           printk("%s  line %d  ..clock from PLL input........\n",__func__,__LINE__);
+           i2cc_set_reg(client, 0x3103,0x03);  //clock from PLL input
+#endif
 
             priv->initialized = true;
         }
@@ -1713,6 +1716,21 @@ static int ov5645_s_stream(struct v4l2_subdev *sd, int enable)
           printk("%s  line %d  ..set yuyv format.......\n",__func__,__LINE__);
           i2cc_set_reg(client, 0x4300, 0x30);
           i2cc_set_reg(client, 0x501f, 0x00);
+
+
+
+
+          mdelay(270);
+
+          if(0 == down_af_firmware_flag)
+          {
+              ov5640_sensor_download_af_fw(sd);
+
+              down_af_firmware_flag = 1;
+          }
+
+          ov5640_sensor_s_single_af(sd);
+
 
 
     } else

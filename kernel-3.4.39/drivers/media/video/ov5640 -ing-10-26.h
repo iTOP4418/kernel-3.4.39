@@ -2158,7 +2158,7 @@ static int ov5640_s_stream(struct v4l2_subdev *sd, int enable)
 
 
 
-
+/*
           mdelay(270);
 
           if(0 == down_af_firmware_flag)
@@ -2169,7 +2169,7 @@ static int ov5640_s_stream(struct v4l2_subdev *sd, int enable)
           }
 
           ov5640_sensor_s_single_af(sd);
-
+*/
 
     } else
     {
