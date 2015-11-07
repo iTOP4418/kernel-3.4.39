@@ -32,12 +32,13 @@
 
 //#include "ov5640.h"
 
+#include "ov5640-oriod.h"
 
 #define MODULE_NAME "OV5640"
 /* private ctrls */
 #define V4L2_CID_SCENE_EXPOSURE         (V4L2_CTRL_CLASS_CAMERA | 0x1001)
 #define V4L2_CID_PRIVATE_PREV_CAPT      (V4L2_CTRL_CLASS_CAMERA | 0x1002)
-#define NUM_CTRLS           11
+#define NUM_CTRLS           12
 
 
 
@@ -364,6 +365,7 @@ static u8 AD5820_Config[] =
 #define SENSORDB(fmt, arg...)  printk(fmt, ##arg)
 static struct timeval OV5640YUV_ktv1, OV5640YUV_ktv2;
 struct i2c_client * g_client=NULL;
+bool  g_bpicturing=false;// Is taking Picture?
 
 #define UINT32  unsigned int
 #define  UINT8  u8
@@ -481,14 +483,14 @@ u8  OV5640YUV_read_cmos_sensor(u16 addr)
 {
     unsigned char value=0;
 
-     i2cc_get_reg(g_client,addr,&value);
+    i2cc_get_reg(g_client,addr,&value);
 
-     return value;
+    return value;
 }
 
 void OV5640YUV_write_cmos_sensor(u16 addr,u32 param)
 {
-      i2cc_set_reg(g_client,addr,param);
+    i2cc_set_reg(g_client,addr,param);
 }
 
 
@@ -536,7 +538,7 @@ static void OV5640_FOCUS_AD5820_Init(void)
     int len = 128;
 
 
-  //  OV5640YUV_imgSensorProfileStart();
+    //  OV5640YUV_imgSensorProfileStart();
     OV5640YUV_write_cmos_sensor(0x3000, 0x20);
     totalCnt = ARRAY_SIZE(AD5820_Config);
 
@@ -630,8 +632,8 @@ void OV5640YUV_Sensor_Dvp_Init(void)
     OV5640YUV_write_cmos_sensor(0x3c0a, 0x9c);
     OV5640YUV_write_cmos_sensor(0x3c0b, 0x40);
 
-  //  OV5640YUV_write_cmos_sensor(0x3820, 0x47);
-   // OV5640YUV_write_cmos_sensor(0x3821, 0x01);
+    //  OV5640YUV_write_cmos_sensor(0x3820, 0x47);
+    // OV5640YUV_write_cmos_sensor(0x3821, 0x01);
 
     //dg add 2015-07-24 for stop flip & mirror image
     OV5640YUV_write_cmos_sensor(0x3820, 0x40);
@@ -667,7 +669,7 @@ void OV5640YUV_Sensor_Dvp_Init(void)
 
 
     //OV5640YUV_write_cmos_sensor(0x3810, 0x00);
-   // OV5640YUV_write_cmos_sensor(0x3811, 0x10);
+    // OV5640YUV_write_cmos_sensor(0x3811, 0x10);
 
     //dg add  2015-07-25 to adjust X OFFSET position coordinate for image windeos show
     OV5640YUV_write_cmos_sensor(0x3810, 0x00); // 00->01->00
@@ -721,7 +723,7 @@ void OV5640YUV_Sensor_Dvp_Init(void)
     OV5640YUV_write_cmos_sensor(0x300e, 0x58);
     OV5640YUV_write_cmos_sensor(0x302e, 0x00);
 
-     OV5640YUV_write_cmos_sensor(0x4300, 0x30);
+    OV5640YUV_write_cmos_sensor(0x4300, 0x30);
     // OV5640YUV_write_cmos_sensor(0x4300, 0x32); //dg changge from 0x30->0x32
 
     OV5640YUV_write_cmos_sensor(0x501f, 0x00);
@@ -932,7 +934,7 @@ static void OV5640_FOCUS_AD5820_Single_Focus()
     OV5640YUV_write_cmos_sensor(0x3023,0x01);
     OV5640YUV_write_cmos_sensor(0x3022,0x03);
 
-    iteration = 100;
+    iteration = 50;
     do{
         state = (UINT8)OV5640YUV_read_cmos_sensor(0x3023);
 
@@ -941,13 +943,16 @@ static void OV5640_FOCUS_AD5820_Single_Focus()
             SENSORDB("single focused!\n");
             break;
         }
-     //   mdelay(30);
+        //   mdelay(30);
 
-         mdelay(3);
+        mdelay(3);
 
         iteration --;
 
     }while(iteration);
+
+
+   SENSORDB("start single focused !\n");
 
     return;
 }
@@ -961,7 +966,7 @@ static void OV5640_FOCUS_AD5820_Pause_Focus()
     OV5640YUV_write_cmos_sensor(0x3023,0x01);
     OV5640YUV_write_cmos_sensor(0x3022,0x06);
 
-    iteration = 100;
+    iteration = 50;
     do{
         state = (UINT8)OV5640YUV_read_cmos_sensor(0x3023);
 
@@ -970,7 +975,7 @@ static void OV5640_FOCUS_AD5820_Pause_Focus()
             break;
         }
         msleep(30);
-    //      msleep(10);
+        //      msleep(10);
 
         iteration --;
 
@@ -980,7 +985,7 @@ static void OV5640_FOCUS_AD5820_Pause_Focus()
     {
         printk("pause focus fail.........state is 0x%x...",state);
 
-       return ;
+        return ;
 
     }
 
@@ -997,7 +1002,7 @@ static void OV5640_FOCUS_AD5820_Cancel_Focus()
     OV5640YUV_write_cmos_sensor(0x3023,0x01);
     OV5640YUV_write_cmos_sensor(0x3022,0x08);
 
-    iteration = 100;
+    iteration = 50;
     do{
         state = (UINT8)OV5640YUV_read_cmos_sensor(0x3023);
         if(state == 0x00)
@@ -1008,6 +1013,10 @@ static void OV5640_FOCUS_AD5820_Cancel_Focus()
         iteration --;
 
     }while(iteration);
+
+
+
+  SENSORDB("stop  focused !\n");
 
 }
 
@@ -1027,7 +1036,7 @@ void OV5640YUV_set_720P_init(void)
     OV5640YUV_write_cmos_sensor(0x5307, 0x20);//28
 
     //OV5640YUV_write_cmos_sensor(0x3820, 0x47);
-   // OV5640YUV_write_cmos_sensor(0x3821, 0x01);
+    // OV5640YUV_write_cmos_sensor(0x3821, 0x01);
 
     //dg add 2015-07-24 for stop flip image
     OV5640YUV_write_cmos_sensor(0x3820, 0x40);
@@ -1043,8 +1052,8 @@ void OV5640YUV_set_720P_init(void)
     OV5640YUV_write_cmos_sensor(0x3803, 0x04);
 
     //dg add  2015-07-25 to adjust X_AADR_END long for image windeos show
-    OV5640YUV_write_cmos_sensor(0x3804, 0x0a);
-    OV5640YUV_write_cmos_sensor(0x3805, 0x5f); //3f-5f->Good
+ //   OV5640YUV_write_cmos_sensor(0x3804, 0x0a);
+ //   OV5640YUV_write_cmos_sensor(0x3805, 0x5f); //3f-5f->Good
 
 
     OV5640YUV_write_cmos_sensor(0x3806, 0x07);
@@ -1066,7 +1075,7 @@ void OV5640YUV_set_720P_init(void)
 
 
     //OV5640YUV_write_cmos_sensor(0x3810, 0x00);
-   // OV5640YUV_write_cmos_sensor(0x3811, 0x10);
+    // OV5640YUV_write_cmos_sensor(0x3811, 0x10);
 
     //dg add  2015-07-25 to adjust X OFFSET position coordinate for image windeos show
     OV5640YUV_write_cmos_sensor(0x3810, 0x00); // 00->01->00
@@ -1322,7 +1331,7 @@ void OV5640YUV_NightMode(bool bEnable)
 
 static void OV5640YUV_SetDummy(const kal_uint16 iPixels, const kal_uint16 iLines)
 {
-   return ;
+    return ;
 }
 
 
@@ -1532,23 +1541,23 @@ void write_OV5640YUV_gain(kal_uint16 gain)
 *************************************************************************/
 UINT32 OV5640YUVPreview()
 {
- //   kal_uint16 iStartX = 0, iStartY = 0;
+    //   kal_uint16 iStartX = 0, iStartY = 0;
 
-   g_iOV5640YUV_Mode = OV5640_MODE_PREVIEW;
+    g_iOV5640YUV_Mode = OV5640_MODE_PREVIEW;
 
     OV5640YUV_write_cmos_sensor(0x4202,0x0f);
-   // msleep(30);
+    // msleep(30);
 
     msleep(5);
 
     OV5640YUV_set_720P();
 
     OV5640YUV_write_cmos_sensor(0x4202,0x00);
-  //  msleep(30);
+    //  msleep(30);
 
 
-  // dg cancle  ,donot focus  start,otherwise picture is not working well.
-   //dg  use after for autofocus on android4.4 version
+    // dg cancle  ,donot focus  start,otherwise picture is not working well.
+    //dg  use after for autofocus on android4.4 version
     OV5640YUV_write_cmos_sensor(0x3023,0x01);
     OV5640YUV_write_cmos_sensor(0x3022,0x04);
 
@@ -1562,7 +1571,7 @@ UINT32 OV5640YUVPreview()
 
     //OV5640YUV_write_cmos_sensor(0x3820, 0x46);
     //OV5640YUV_write_cmos_sensor(0x3821, 0x00);
-/*
+    /*
     if(sensor_config_data->SensorOperationMode==MSDK_SENSOR_OPERATION_MODE_VIDEO)		// MPEG4 Encode Mode
     {
         OV5640YUV_MPEG4_encode_mode = KAL_TRUE;
@@ -1583,7 +1592,7 @@ UINT32 OV5640YUVPreview()
     //dg cancle 2015-07-18
     //OV5640YUV_write_cmos_sensor(0x3820,0x47);
     //OV5640YUV_write_cmos_sensor(0x3821,0x01);
-   // OV5640YUV_write_cmos_sensor(0x4514,0x00);
+    // OV5640YUV_write_cmos_sensor(0x4514,0x00);
     /*************************************************************************************************************/
 
 #if 0
@@ -1622,8 +1631,8 @@ UINT32 OV5640YUVCapture( )
     {
         g_iOV5640YUV_Mode = OV5640_MODE_CAPTURE;
 
-      //  if(sensor_config_data->EnableShutterTansfer==KAL_TRUE)
-         //   shutter=sensor_config_data->CaptureShutter;
+        //  if(sensor_config_data->EnableShutterTansfer==KAL_TRUE)
+        //   shutter=sensor_config_data->CaptureShutter;
 
         temp= OV5640YUV_read_cmos_sensor(0x3a00);
         OV5640YUV_write_cmos_sensor(0x3a00,temp&0xfb);
@@ -1730,11 +1739,18 @@ UINT32 OV5640YUVCapture( )
 #define XGA_WIDTH	1024
 #define XGA_HEIGHT	768
 
+#define WIDTH_720P      1280
+#define HEIGHT_720P     720
+
 #define SXGA_WIDTH	1280
 #define SXGA_HEIGHT	960
 
 #define UXGA_WIDTH	1600
 #define UXGA_HEIGHT	1200
+
+#define WIDTH_1080P      1920
+#define HEIGHT_1080P     1080
+
 
 #define QXGA_WIDTH	2048
 #define QXGA_HEIGHT	1536
@@ -1767,8 +1783,10 @@ UINT32 OV5640YUVCapture( )
 enum ov5640_resolution {
     RESV_VGA = 1,
     RESV_XGA,
+    RESV_720P,
     RESV_SXGA,
     RESV_UXGA,
+    RESV_1080P,
     RESV_QXGA,
     RESV_QSXGA,
 };
@@ -1779,10 +1797,12 @@ struct regval {
     unsigned char  val;
 };
 
+
 struct regval_list {
     unsigned char reg_num[REG_ADDR_STEP];
     unsigned char value[REG_DATA_STEP];
 };
+
 
 #if 0
 struct ov5640_color_format {
@@ -1833,8 +1853,8 @@ struct ov5640_win_size {
     const struct regval_list    *lsc_regs;
     unsigned int                *frame_rate_array;
 
-     enum ov5640_resolution resv;
-     const struct regval *regs;
+    enum ov5640_resolution resv;
+    const struct regval *regs;
 
 };
 
@@ -1875,6 +1895,7 @@ struct ov5640_priv {
      * ctrls
     */
     /* standard */
+    struct v4l2_ctrl * focus;
     struct v4l2_ctrl * pbrightness;
     struct v4l2_ctrl *pcontrast;
     struct v4l2_ctrl * pauto_white_balance;
@@ -1924,271 +1945,271 @@ enum {
 #define VERSION(id, vers) ((id << 8) | (vers & 0XFF))
 
 
-int down_af_firmware_flag = 0;
+int g_down_af_firmware_flag = 0;
 
 
 /* init 800X600 SVGA */
 static struct regval sensor_init_data[] =
 {
-        {0x3103, 0x11},
-        {0x3008, 0x82},
-        {0x3008, 0x42},
-        {0x3103, 0x03},
-        {0x3017, 0xff},
-        {0x3018, 0xff},
-        {0x3034, 0x1a},
-        {0x3035, 0x21},
-        {0x3036, 0x46},
-        {0x3037, 0x13},
-        {0x3108, 0x01},
-        {0x3630, 0x36},
-        {0x3631, 0x0e},
-        {0x3632, 0xe2},
-        {0x3633, 0x12},
-        {0x3621, 0xe0},
-        {0x3704, 0xa0},
-        {0x3703, 0x5a},
-        {0x3715, 0x78},
-        {0x3717, 0x01},
-        {0x370b, 0x60},
-        {0x3705, 0x1a},
-        {0x3905, 0x02},
-        {0x3906, 0x10},
-        {0x3901, 0x0a},
-        {0x3731, 0x12},
-        {0x3600, 0x08},
-        {0x3601, 0x33},
-        {0x302d, 0x60},
-        {0x3620, 0x52},
-        {0x371b, 0x20},
-        {0x471c, 0x50},
-        {0x3a13, 0x43},
-        {0x3a18, 0x00},
-        {0x3a19, 0xf8},
-        {0x3635, 0x13},
-        {0x3636, 0x03},
-        {0x3634, 0x40},
-        {0x3622, 0x01},
-        {0x3c01, 0x34},
-        {0x3c04, 0x28},
-        {0x3c05, 0x98},
-        {0x3c06, 0x00},
-        {0x3c07, 0x08},
-        {0x3c08, 0x00},
-        {0x3c09, 0x1c},
-        {0x3c0a, 0x9c},
-        {0x3c0b, 0x40},
-        {0x3820, 0x41},
-        {0x3821, 0x07},
-        {0x3814, 0x31},
-        {0x3815, 0x31},
-        {0x3800, 0x00},
-        {0x3801, 0x00},
-        {0x3802, 0x00},
-        {0x3803, 0x04},
-        {0x3804, 0x0a},
-        {0x3805, 0x3f},
-        {0x3806, 0x07},
-        {0x3807, 0x9b},
+{0x3103, 0x11},
+{0x3008, 0x82},
+{0x3008, 0x42},
+{0x3103, 0x03},
+{0x3017, 0xff},
+{0x3018, 0xff},
+{0x3034, 0x1a},
+{0x3035, 0x21},
+{0x3036, 0x46},
+{0x3037, 0x13},
+{0x3108, 0x01},
+{0x3630, 0x36},
+{0x3631, 0x0e},
+{0x3632, 0xe2},
+{0x3633, 0x12},
+{0x3621, 0xe0},
+{0x3704, 0xa0},
+{0x3703, 0x5a},
+{0x3715, 0x78},
+{0x3717, 0x01},
+{0x370b, 0x60},
+{0x3705, 0x1a},
+{0x3905, 0x02},
+{0x3906, 0x10},
+{0x3901, 0x0a},
+{0x3731, 0x12},
+{0x3600, 0x08},
+{0x3601, 0x33},
+{0x302d, 0x60},
+{0x3620, 0x52},
+{0x371b, 0x20},
+{0x471c, 0x50},
+{0x3a13, 0x43},
+{0x3a18, 0x00},
+{0x3a19, 0xf8},
+{0x3635, 0x13},
+{0x3636, 0x03},
+{0x3634, 0x40},
+{0x3622, 0x01},
+{0x3c01, 0x34},
+{0x3c04, 0x28},
+{0x3c05, 0x98},
+{0x3c06, 0x00},
+{0x3c07, 0x08},
+{0x3c08, 0x00},
+{0x3c09, 0x1c},
+{0x3c0a, 0x9c},
+{0x3c0b, 0x40},
+{0x3820, 0x41},
+{0x3821, 0x07},
+{0x3814, 0x31},
+{0x3815, 0x31},
+{0x3800, 0x00},
+{0x3801, 0x00},
+{0x3802, 0x00},
+{0x3803, 0x04},
+{0x3804, 0x0a},
+{0x3805, 0x3f},
+{0x3806, 0x07},
+{0x3807, 0x9b},
 
 
-        {0x3808, 0x03},
-        {0x3809, 0x20},
-        {0x380a, 0x02},
-        {0x380b, 0x58},
+{0x3808, 0x03},
+{0x3809, 0x20},
+{0x380a, 0x02},
+{0x380b, 0x58},
 
 
 
-        {0x380c, 0x07},
-        {0x380d, 0x68},
-        {0x380e, 0x03},
-        {0x380f, 0xd8},
-        {0x3810, 0x00},
-        {0x3811, 0x10},
-        {0x3812, 0x00},
-        {0x3813, 0x06},
-        {0x3618, 0x00},
-        {0x3612, 0x29},
-        {0x3708, 0x64},
-        {0x3709, 0x52},
-        {0x370c, 0x03},
-        {0x3a02, 0x03},
-        {0x3a03, 0xd8},
-        {0x3a08, 0x01},
-        {0x3a09, 0x27},
-        {0x3a0a, 0x00},
-        {0x3a0b, 0xf6},
-        {0x3a0e, 0x03},
-        {0x3a0d, 0x04},
-        {0x3a14, 0x03},
-        {0x3a15, 0xd8},
-        {0x4001, 0x02},
-        {0x4004, 0x02},
-        {0x3000, 0x00},
-        {0x3002, 0x1c},
-        {0x3004, 0xff},
-        {0x3006, 0xc3},
-        {0x300e, 0x58},
-        {0x302e, 0x00},
-        {0x4740, 0x20},
-        {0x4300, 0x30},	//0x30 YUYV  0x31 YVYU 0x33 VYUY 0x32 UYVY
-        {0x501f, 0x00},
-        {0x4713, 0x03},
-        {0x4407, 0x04},
-        {0x440e, 0x00},
-        {0x460b, 0x35},
-        {0x460c, 0x20},
-        {0x4837, 0x22},
-        {0x3824, 0x02},
-        {0x5000, 0xa7},
-        {0x5001, 0xa3},
-        {0x5180, 0xff},
-        {0x5181, 0xf2},
-        {0x5182, 0x00},
-        {0x5183, 0x14},
-        {0x5184, 0x25},
-        {0x5185, 0x24},
-        {0x5186, 0x09},
-        {0x5187, 0x09},
-        {0x5188, 0x09},
-        {0x5189, 0x75},
-        {0x518a, 0x54},
-        {0x518b, 0xe0},
-        {0x518c, 0xb2},
-        {0x518d, 0x42},
-        {0x518e, 0x3d},
-        {0x518f, 0x56},
-        {0x5190, 0x46},
-        {0x5191, 0xf8},
-        {0x5192, 0x04},
-        {0x5193, 0x70},
-        {0x5194, 0xf0},
-        {0x5195, 0xf0},
-        {0x5196, 0x03},
-        {0x5197, 0x01},
-        {0x5198, 0x04},
-        {0x5199, 0x12},
-        {0x519a, 0x04},
-        {0x519b, 0x00},
-        {0x519c, 0x06},
-        {0x519d, 0x82},
-        {0x519e, 0x38},
-        {0x5381, 0x1e},
-        {0x5382, 0x5b},
-        {0x5383, 0x08},
-        {0x5384, 0x0a},
-        {0x5385, 0x7e},
-        {0x5386, 0x88},
-        {0x5387, 0x7c},
-        {0x5388, 0x6c},
-        {0x5389, 0x10},
-        {0x538a, 0x01},
-        {0x538b, 0x98},
-        {0x5300, 0x08},
-        {0x5301, 0x30},
-        {0x5302, 0x10},
-        {0x5303, 0x00},
-        {0x5304, 0x08},
-        {0x5305, 0x30},
-        {0x5306, 0x08},
-        {0x5307, 0x16},
-        {0x5309, 0x08},
-        {0x530a, 0x30},
-        {0x530b, 0x04},
-        {0x530c, 0x06},
-        {0x5480, 0x01},
-        {0x5481, 0x08},
-        {0x5482, 0x14},
-        {0x5483, 0x28},
-        {0x5484, 0x51},
-        {0x5485, 0x65},
-        {0x5486, 0x71},
-        {0x5487, 0x7d},
-        {0x5488, 0x87},
-        {0x5489, 0x91},
-        {0x548a, 0x9a},
-        {0x548b, 0xaa},
-        {0x548c, 0xb8},
-        {0x548d, 0xcd},
-        {0x548e, 0xdd},
-        {0x548f, 0xea},
-        {0x5490, 0x1d},
-        {0x5580, 0x02},
-        {0x5583, 0x40},
-        {0x5584, 0x10},
-        {0x5589, 0x10},
-        {0x558a, 0x00},
-        {0x558b, 0xf8},
-        {0x5800, 0x23},
-        {0x5801, 0x14},
-        {0x5802, 0x0f},
-        {0x5803, 0x0f},
-        {0x5804, 0x12},
-        {0x5805, 0x26},
-        {0x5806, 0x0c},
-        {0x5807, 0x08},
-        {0x5808, 0x05},
-        {0x5809, 0x05},
-        {0x580a, 0x08},
-        {0x580b, 0x0d},
-        {0x580c, 0x08},
-        {0x580d, 0x03},
-        {0x580e, 0x00},
-        {0x580f, 0x00},
-        {0x5810, 0x03},
-        {0x5811, 0x09},
-        {0x5812, 0x07},
-        {0x5813, 0x03},
-        {0x5814, 0x00},
-        {0x5815, 0x01},
-        {0x5816, 0x03},
-        {0x5817, 0x08},
-        {0x5818, 0x0d},
-        {0x5819, 0x08},
-        {0x581a, 0x05},
-        {0x581b, 0x06},
-        {0x581c, 0x08},
-        {0x581d, 0x0e},
-        {0x581e, 0x29},
-        {0x581f, 0x17},
-        {0x5820, 0x11},
-        {0x5821, 0x11},
-        {0x5822, 0x15},
-        {0x5823, 0x28},
-        {0x5824, 0x46},
-        {0x5825, 0x26},
-        {0x5826, 0x08},
-        {0x5827, 0x26},
-        {0x5828, 0x64},
-        {0x5829, 0x26},
-        {0x582a, 0x24},
-        {0x582b, 0x22},
-        {0x582c, 0x24},
-        {0x582d, 0x24},
-        {0x582e, 0x06},
-        {0x582f, 0x22},
-        {0x5830, 0x40},
-        {0x5831, 0x42},
-        {0x5832, 0x24},
-        {0x5833, 0x26},
-        {0x5834, 0x24},
-        {0x5835, 0x22},
-        {0x5836, 0x22},
-        {0x5837, 0x26},
-        {0x5838, 0x44},
-        {0x5839, 0x24},
-        {0x583a, 0x26},
-        {0x583b, 0x28},
-        {0x583c, 0x42},
-        {0x583d, 0xce},
-        {0x5025, 0x00},
-        {0x3a0f, 0x30},
-        {0x3a10, 0x28},
-        {0x3a1b, 0x30},
-        {0x3a1e, 0x26},
-        {0x3a11, 0x60},
-        {0x3a1f, 0x14},
-        {0x3008, 0x02},
+{0x380c, 0x07},
+{0x380d, 0x68},
+{0x380e, 0x03},
+{0x380f, 0xd8},
+{0x3810, 0x00},
+{0x3811, 0x10},
+{0x3812, 0x00},
+{0x3813, 0x06},
+{0x3618, 0x00},
+{0x3612, 0x29},
+{0x3708, 0x64},
+{0x3709, 0x52},
+{0x370c, 0x03},
+{0x3a02, 0x03},
+{0x3a03, 0xd8},
+{0x3a08, 0x01},
+{0x3a09, 0x27},
+{0x3a0a, 0x00},
+{0x3a0b, 0xf6},
+{0x3a0e, 0x03},
+{0x3a0d, 0x04},
+{0x3a14, 0x03},
+{0x3a15, 0xd8},
+{0x4001, 0x02},
+{0x4004, 0x02},
+{0x3000, 0x00},
+{0x3002, 0x1c},
+{0x3004, 0xff},
+{0x3006, 0xc3},
+{0x300e, 0x58},
+{0x302e, 0x00},
+{0x4740, 0x20},
+{0x4300, 0x30},	//0x30 YUYV  0x31 YVYU 0x33 VYUY 0x32 UYVY
+{0x501f, 0x00},
+{0x4713, 0x03},
+{0x4407, 0x04},
+{0x440e, 0x00},
+{0x460b, 0x35},
+{0x460c, 0x20},
+{0x4837, 0x22},
+{0x3824, 0x02},
+{0x5000, 0xa7},
+{0x5001, 0xa3},
+{0x5180, 0xff},
+{0x5181, 0xf2},
+{0x5182, 0x00},
+{0x5183, 0x14},
+{0x5184, 0x25},
+{0x5185, 0x24},
+{0x5186, 0x09},
+{0x5187, 0x09},
+{0x5188, 0x09},
+{0x5189, 0x75},
+{0x518a, 0x54},
+{0x518b, 0xe0},
+{0x518c, 0xb2},
+{0x518d, 0x42},
+{0x518e, 0x3d},
+{0x518f, 0x56},
+{0x5190, 0x46},
+{0x5191, 0xf8},
+{0x5192, 0x04},
+{0x5193, 0x70},
+{0x5194, 0xf0},
+{0x5195, 0xf0},
+{0x5196, 0x03},
+{0x5197, 0x01},
+{0x5198, 0x04},
+{0x5199, 0x12},
+{0x519a, 0x04},
+{0x519b, 0x00},
+{0x519c, 0x06},
+{0x519d, 0x82},
+{0x519e, 0x38},
+{0x5381, 0x1e},
+{0x5382, 0x5b},
+{0x5383, 0x08},
+{0x5384, 0x0a},
+{0x5385, 0x7e},
+{0x5386, 0x88},
+{0x5387, 0x7c},
+{0x5388, 0x6c},
+{0x5389, 0x10},
+{0x538a, 0x01},
+{0x538b, 0x98},
+{0x5300, 0x08},
+{0x5301, 0x30},
+{0x5302, 0x10},
+{0x5303, 0x00},
+{0x5304, 0x08},
+{0x5305, 0x30},
+{0x5306, 0x08},
+{0x5307, 0x16},
+{0x5309, 0x08},
+{0x530a, 0x30},
+{0x530b, 0x04},
+{0x530c, 0x06},
+{0x5480, 0x01},
+{0x5481, 0x08},
+{0x5482, 0x14},
+{0x5483, 0x28},
+{0x5484, 0x51},
+{0x5485, 0x65},
+{0x5486, 0x71},
+{0x5487, 0x7d},
+{0x5488, 0x87},
+{0x5489, 0x91},
+{0x548a, 0x9a},
+{0x548b, 0xaa},
+{0x548c, 0xb8},
+{0x548d, 0xcd},
+{0x548e, 0xdd},
+{0x548f, 0xea},
+{0x5490, 0x1d},
+{0x5580, 0x02},
+{0x5583, 0x40},
+{0x5584, 0x10},
+{0x5589, 0x10},
+{0x558a, 0x00},
+{0x558b, 0xf8},
+{0x5800, 0x23},
+{0x5801, 0x14},
+{0x5802, 0x0f},
+{0x5803, 0x0f},
+{0x5804, 0x12},
+{0x5805, 0x26},
+{0x5806, 0x0c},
+{0x5807, 0x08},
+{0x5808, 0x05},
+{0x5809, 0x05},
+{0x580a, 0x08},
+{0x580b, 0x0d},
+{0x580c, 0x08},
+{0x580d, 0x03},
+{0x580e, 0x00},
+{0x580f, 0x00},
+{0x5810, 0x03},
+{0x5811, 0x09},
+{0x5812, 0x07},
+{0x5813, 0x03},
+{0x5814, 0x00},
+{0x5815, 0x01},
+{0x5816, 0x03},
+{0x5817, 0x08},
+{0x5818, 0x0d},
+{0x5819, 0x08},
+{0x581a, 0x05},
+{0x581b, 0x06},
+{0x581c, 0x08},
+{0x581d, 0x0e},
+{0x581e, 0x29},
+{0x581f, 0x17},
+{0x5820, 0x11},
+{0x5821, 0x11},
+{0x5822, 0x15},
+{0x5823, 0x28},
+{0x5824, 0x46},
+{0x5825, 0x26},
+{0x5826, 0x08},
+{0x5827, 0x26},
+{0x5828, 0x64},
+{0x5829, 0x26},
+{0x582a, 0x24},
+{0x582b, 0x22},
+{0x582c, 0x24},
+{0x582d, 0x24},
+{0x582e, 0x06},
+{0x582f, 0x22},
+{0x5830, 0x40},
+{0x5831, 0x42},
+{0x5832, 0x24},
+{0x5833, 0x26},
+{0x5834, 0x24},
+{0x5835, 0x22},
+{0x5836, 0x22},
+{0x5837, 0x26},
+{0x5838, 0x44},
+{0x5839, 0x24},
+{0x583a, 0x26},
+{0x583b, 0x28},
+{0x583c, 0x42},
+{0x583d, 0xce},
+{0x5025, 0x00},
+{0x3a0f, 0x30},
+{0x3a10, 0x28},
+{0x3a1b, 0x30},
+{0x3a1e, 0x26},
+{0x3a11, 0x60},
+{0x3a1f, 0x14},
+{0x3008, 0x02},
 };
 
 
@@ -2720,6 +2741,64 @@ ENDMARKER,
 };
 
 
+static struct regval ov5640_preview_720p_regs[] = {
+    //sys_clk 24*70/3/1/2/2.5/2=56M, dvp_pclk=112M
+    //frame rate: 56000000/1896/984=30fps
+{0x3036,0x46},
+//	{0x3037,0x13},	//vco freq=24*70/3=560M
+//	{0x3034,0x1a},
+{0x3035,0x11},
+//	{0x3108,0x01},	//sys_clk=560/1/2/2.5/2=56M, framerate=sys_clk/hts/vts=30
+{0x3824,0x01},
+{0x460C,0x22},	//dvp_pclk controlled by REG(0x3824)
+
+{0x3C07,0x08},
+{0x3820,0x41}, //ryj modify 0x47
+{0x3821,0x07}, //ryj modify 0x01
+{0x3814,0x31},
+{0x3815,0x31},
+{0x3803,0x04},
+{0x3807,0x9B},
+//DVP output size 1280*720
+{0x3808,0x05},
+{0x3809,0x00},
+{0x380A,0x02},
+{0x380B,0xD0},
+//HTS 1896
+{0x380C,0x07},
+{0x380D,0x68},
+//VTS 984
+{0x380E,0x03},
+{0x380F,0xD8},
+
+{0x3813,0x7E},
+{0x3618,0x00},
+{0x3612,0x29},
+{0x3708,0x64},
+{0x3709,0x52},
+{0x370C,0x03},
+{0x3A02,0x03},
+{0x3A03,0xD8},
+{0x3A0E,0x03},
+{0x3A0D,0x04},
+{0x3A14,0x03},
+{0x3A15,0xD8},
+{0x4004,0x02},
+{0x4713,0x03},
+{0x4407,0x04},
+{0x460B,0x35},
+{0x5001,0xA3},
+{0x3008,0x02},
+{0x3002,0x1c},
+{0x3006,0xc3},
+//enable AEC/AGC
+{0x3503,0x00},
+
+ENDMARKER,
+};
+
+
+
 static const struct regval ov5640_qsxga_to_sxga_regs[] = {
 {0x3800, 0x00},
 {0x3801, 0x00},
@@ -2750,6 +2829,8 @@ static const struct regval ov5640_qsxga_to_sxga_regs[] = {
 ENDMARKER,
 
 };
+
+
 
 static const struct regval ov5640_qsxga_to_uxga_regs[] = {
 #if 0
@@ -2847,6 +2928,55 @@ ENDMARKER,
 {0x4202,0x00},
 ENDMARKER,
 #endif
+};
+
+
+static struct regval ov5640_setting_15fps_1080P_1920_1080_imax[] = {
+{0x3c07, 0x07},
+{0x3820, 0x40},
+{0x3821, 0x06},
+{0x3814, 0x11},
+{0x3815, 0x11},
+{0x3800, 0x00},
+{0x3801, 0x00},
+{0x3802, 0x00},
+{0x3803, 0xee},
+{0x3804, 0x0a},
+{0x3805, 0x3f},
+{0x3806, 0x05},
+{0x3807, 0xc3},
+{0x3808, 0x07},
+{0x3809, 0x80},
+{0x380a, 0x04},
+{0x380b, 0x38},
+{0x380c, 0x0b},
+{0x380d, 0x1c},
+{0x380e, 0x07},
+{0x380f, 0xb0},
+{0x3813, 0x04},
+{0x3618, 0x04},
+{0x3612, 0x2b},
+{0x3709, 0x12},
+{0x370c, 0x00},
+{0x3a02, 0x07},
+{0x3a03, 0xae},
+{0x3a14, 0x07},
+{0x3a15, 0xae},
+{0x4004, 0x06},
+{0x3002, 0x1c},
+{0x3006, 0xc3},
+{0x4713, 0x02},
+{0x4407, 0x0c},
+{0x460b, 0x37},
+{0x460c, 0x20},
+{0x4837, 0x2c},
+{0x3824, 0x01},
+{0x5001, 0x83},
+{0x3034, 0x1a},
+{0x3035, 0x21},
+{0x3036, 0x69},
+{0x3037, 0x13},
+
 };
 
 
@@ -3153,6 +3283,13 @@ static  struct ov5640_win_size ov5640_wins[] = {
     .regs    = ov5640_qsxga_to_xga_regs,
 },
 {
+    .name    = "720P",    /* SXGA: 1280*720  */
+    .resv    = RESV_720P,
+    .width   = WIDTH_720P,
+    .height  = HEIGHT_720P,
+    .regs    = ov5640_preview_720p_regs,
+},
+{
     .name    = "SXGA",    /* SXGA: 1280*960  */
     .resv    = RESV_SXGA,
     .width   = SXGA_WIDTH,
@@ -3166,6 +3303,16 @@ static  struct ov5640_win_size ov5640_wins[] = {
     .height  = UXGA_HEIGHT,
     .regs    = ov5640_qsxga_to_uxga_regs,
 },
+
+
+{
+    .name    = "1080P",    /* 1080P: 1920*1080  */
+    .resv    = RESV_1080P,
+    .width   = WIDTH_1080P,
+    .height  = HEIGHT_1080P,
+    .regs    = ov5640_setting_15fps_1080P_1920_1080_imax,
+},
+
 {
     .name    = "QXGA",    /* QXGA: 2048*1536 */
     .resv    = RESV_QXGA,
@@ -3352,13 +3499,32 @@ static int write_regs(struct i2c_client *client, const struct regval *regs, int 
     return (ret);
 }
 
+static int write_regs_odroid(struct i2c_client *client, const struct regval_list_odroid *regs, int array_len)
+{
+    int i;
+    int ret = 0;
+
+    for (i = 0; i < array_len; i++) {
+        if ((ret = i2cc_set_reg(client, regs->reg_num, regs->value))) {
+            OV_ERR("error to set reg:0x%d -> value:%d(index:%d)\n", regs->reg_num,
+                   regs->value, i);
+            return -1;
+        }
+        regs++;
+    }
+
+    //    INFO_BLUE("------*------- write array regs over -------*------ \n");
+
+    return (ret);
+}
+
 static int write_regs_flags(struct i2c_client *client,  const struct regval *regs)
 {
     int i;
     int ret = 0;
 
-  while (regs->reg != 0xff)
-  {
+    while (regs->reg != 0xff)
+    {
         if ((ret = i2cc_set_reg(client, regs->reg, regs->val))) {
             OV_ERR("error to set reg:0x%d -> value:%d(index:%d)\n", regs->reg,
                    regs->val, i);
@@ -3387,8 +3553,8 @@ static const struct ov5640_win_size *select_win(
         win = &ov5640_wins[i];
         if (width == win->width && height == win->height)
         {
-             printk("%s  width=%d, height =%d\n",__func__,win->width,win->height);
-             return win;
+            printk("%s  width=%d, height =%d\n",__func__,win->width,win->height);
+            return win;
         }
     }
 
@@ -3691,22 +3857,6 @@ static int ov5640_sensor_s_single_af(struct v4l2_subdev *sd)
 /*
  * supported color format list
  */
-#if 0
-static const struct ov5640_color_format ov5640_cfmts[] = {
-{
-    .code		= 2,//cym V4L2_MBUS_FMT_YUYV8_2X8_BE,
-    .colorspace	= V4L2_COLORSPACE_JPEG,
-},
-{
-    .code		= 3, //cym V4L2_MBUS_FMT_YUYV8_2X8_LE,
-    .colorspace	= V4L2_COLORSPACE_JPEG,
-},
-{
-    .code           = 0x2007, //cym V4L2_MBUS_FMT_YUYV8_2X8_LE,
-    .colorspace     = V4L2_COLORSPACE_JPEG,
-},
-};
-#endif
 
 static const struct ov5640_color_format ov5640_cfmts[] = {
 {
@@ -3765,11 +3915,13 @@ static int ov5640_video_probe(struct i2c_client *client)
     return 0;
 }
 
+
+
 static int ov5640_s_stream(struct v4l2_subdev *sd, int enable)
 {
 
-      struct i2c_client *client = v4l2_get_subdevdata(sd);
-      struct ov5640_priv *priv = to_ov5640(client);
+    struct i2c_client *client = v4l2_get_subdevdata(sd);
+    struct ov5640_priv *priv = to_ov5640(client);
 
     int ret = 0;
 
@@ -3780,97 +3932,84 @@ static int ov5640_s_stream(struct v4l2_subdev *sd, int enable)
             dev_err(&client->dev, "norm or win select error\n");
             return -EPERM;
         }
-         /* write init regs */
-        if (!priv->initialized) {
-         //   if (!check_id(client))
-              //  return -EINVAL;
+        /* write init regs */
+        if (!priv->initialized && !g_bpicturing) {
 
-             ov5640_video_probe(client);
 
-#if 1
-             reset_ov5640(client);
+            ov5640_video_probe(client);
+
+            reset_ov5640(client);
 
             printk("%s  line %d init ov5640 regs...........\n",__func__,__LINE__);
-         //   ret = write_regs(client, sensor_init_data,ARRAY_SIZE(sensor_init_data));
-            int ret = write_regs(client, ov5640_init_regs,ARRAY_SIZE(ov5640_init_regs));
+           // ret = write_regs(client, sensor_init_data,ARRAY_SIZE(sensor_init_data));
+           //    int ret = write_regs(client, ov5640_init_regs,ARRAY_SIZE(ov5640_init_regs));
+           int ret = write_regs_odroid(client, ov5640_init_tbl,ARRAY_SIZE(ov5640_init_tbl)); //from odroid,recommand
+        //    int ret = ov5640_init_mode();  //well ,but low frame rate ,from imax,not recommand
             if (ret < 0)
             {
-                printk(KERN_ERR "%s: failed to ov5640 init regs\n", __func__);
-                return -EIO;
+               printk(KERN_ERR "%s: failed to ov5640 init regs\n", __func__);
+               return -EIO;
             }
-#endif
 
 
-       //  OV5640YUVPreview();
-
-
-
-#if 1
             //this is very important,it must be CCIR656 enable,and after init ov5640 regs.
             printk("%s  line %d  ..CCIR656 CTRL00 enable .....\n",__func__,__LINE__);
             i2cc_set_reg(client, 0x4730,0x01);
 
             printk("%s  line %d  ..clock from PLL input........\n",__func__,__LINE__);
             i2cc_set_reg(client, 0x3103,0x03);  //clock from PLL input
-#endif
+
 
             priv->initialized = true;
         }
 
 
-
-#if 1
-
-          printk("%s  line %d  ..set width=%d height=%d........\n",__func__,__LINE__,priv->win->width,priv->win->height);
-          int ret = write_regs_flags(client, priv->win->regs);
-          if (ret < 0)
-          {
-              printk(KERN_ERR "%s: failed to ov5640 size regs\n", __func__);
-              return -EIO;
-          }
-
-
-#if 0
-        //width 640
-          i2cc_set_reg(client, 0x3808, 0x02);
-          i2cc_set_reg(client, 0x3809, 0x80);
-
-          //height  480
-          i2cc_set_reg(client, 0x380a, 0x01);
-          i2cc_set_reg(client, 0x380b, 0xe0);
-#endif
-
-
-//        ret = sp2518_set_mbusformat(client, priv->cfmt);
-  //      if (ret < 0) {
-    //        printk(KERN_ERR "%s: failed to sp2518_set_mbusformat()\n", __func__);
-      //      return -EIO;
-           //yuyv
-          printk("%s  line %d  ..set yuyv format.......\n",__func__,__LINE__);
-          i2cc_set_reg(client, 0x4300, 0x30);
-          i2cc_set_reg(client, 0x501f, 0x00);
+        printk("%s  line %d  ..set width=%d height=%d........\n",__func__,__LINE__,priv->win->width,priv->win->height);
+     //   int ret = write_regs_flags(client, priv->win->regs); //low frame rate,not recommend
+        int ret = write_regs_odroid(client,ov5640_preview_sxga_tbl,ARRAY_SIZE(ov5640_preview_sxga_tbl));  //well & ov5640_init_tbl
+        /* //well,but low frame rate preview,about 5 frames,code from imax,but not recommend
+        struct reg_value *pModeSetting = ov5640_setting_15fps_1080P_1920_1080;
+        int ArySize = ARRAY_SIZE(ov5640_setting_15fps_1080P_1920_1080);
+        int ret = ov5640_download_firmware(pModeSetting, ArySize);
+        */
+        if (ret < 0)
+        {
+            printk(KERN_ERR "%s: failed to ov5640 size regs\n", __func__);
+            return -EIO;
+        }
 
 
 
-#if 0
-          mdelay(100);
-
-          if(0 == down_af_firmware_flag)
-          {
-              ov5640_sensor_download_af_fw(sd);
-
-              down_af_firmware_flag = 1;
-          }
-
-          ov5640_sensor_s_single_af(sd);
-#endif
+        //yuyv
+        printk("%s  line %d  ..set yuyv format.......\n",__func__,__LINE__);
+        i2cc_set_reg(client, 0x4300, 0x30);
+        i2cc_set_reg(client, 0x501f, 0x00);
 
 
-#endif
+
+        if(g_down_af_firmware_flag==0)
+        {
+          //  ov5640_sensor_download_af_fw(sd);
+           OV5640_FOCUS_AD5820_Init();
+           g_down_af_firmware_flag =1;
+        }
+
+
+       //debug by dg,sometimes do not need auto foucus while opening streams to  take picture.
+       // but when open the streams for preview and record video, we need focus. add by dg 2015-11-04
+        if(!g_bpicturing)
+        {
+          mdelay(10);
+
+       // ov5640_sensor_s_single_af(sd);
+          OV5640_FOCUS_AD5820_Single_Focus();
+        }
 
 
     } else
     {
+
+        priv->initialized = false;
 
         //sp2518_write_array(client, sp2518_disable_regs);
 
@@ -4317,160 +4456,7 @@ static int ov5640_set_colorfx(struct i2c_client *client, int effect)
 }
 
 
-static int ov5640_s_ctrl_exynos4412(struct v4l2_subdev *sd, struct v4l2_control *ctrl)
-{
-        struct i2c_client *client = v4l2_get_subdevdata(sd);
-        //struct ov5640_priv *priv = to_ov5640(client);
-        int ret = 0;
-        //int val = 0;
 
-        /* add by cym 20130812 */
-        int err = 0;
-        //int value = ctrl->value;
-        /* end add */
-
-        OV_INFO("%s: control ctrl- %s\n", __func__, v4l2_ctrl_get_name(ctrl->id));
-        printk("%s: control ctrl- id = %d\n", __func__, ctrl->id-V4L2_CID_PRIVATE_BASE);
-
-        switch (ctrl->id) {
-        case V4L2_CID_BRIGHTNESS:
-                ov5640_set_brightness(client, ctrl->value);
-                break;
-
-        case V4L2_CID_CONTRAST:
-                ov5640_set_contrast(client, ctrl->value);
-                break;
-
-        case V4L2_CID_SATURATION:
-                ov5640_set_saturation(client, ctrl->value);
-                break;
-
-        case V4L2_CID_HUE:
-                ov5640_set_hue(client, ctrl->value);
-                break;
-#if 0
-
-//	case V4L2_CID_BLACK_LEVEL:
-//		ov5640_set_black_level(sd, ctrl->value);
-//		break;
-
-        case V4L2_CID_AUTO_WHITE_BALANCE:
-                ov5640_set_awb(client, ctrl->value);
-                break;
-//	case V4L2_CID_DO_WHITE_BALANCE:
-//		ov5640_set_do_white_balance(sd, ctrl->value);
-//		break;
-//	case V4L2_CID_RED_BALANCE:
-//		ov5640_set_red_balance(sd, ctrl->value);
-//		break;
-//	case V4L2_CID_BLUE_BALANCE:
-//		ov5640_set_blue_balance(sd, ctrl->value);
-//		break;
-//	case V4L2_CID_GAMMA:
-//		ov5640_set_gamma(sd, ctrl->value);
-//		break;
-#endif
-        case V4L2_CID_EXPOSURE:
-                ov5640_set_exposure_level(client, ctrl->value);
-                break;
-#if 0
-        case V4L2_CID_AUTOGAIN:
-                ov5640_set_autogain(sd, ctrl->value);
-                break;
-        case V4L2_CID_GAIN:
-                ov5640_set_gain(sd, ctrl->value);
-                break;
-#endif
-        case V4L2_CID_HFLIP:
-        case V4L2_CID_VFLIP:
-        ov5640_set_flip(client, ctrl);
-        break;
-#if 0
-        case V4L2_CID_POWER_LINE_FREQUENCY:
-                ov5640_set_power_line_frequency(sd, ctrl->value);
-                break;
-//	case V4L2_CID_HUE_AUTO:
-//		ov5640_set_hue_auto(sd, ctrl->value);
-//		break;
-
-        case V4L2_CID_WHITE_BALANCE_TEMPERATURE:
-                set_white_balance_temperature(client, ctrl->value);
-                break;
-#endif
-        case V4L2_CID_SHARPNESS:
-                ov5640_set_sharpness(client, ctrl->value);
-                break;
-//	case V4L2_CID_BACKLIGHT_COMPENSATION:
-//		ov5640_set_backlight_compensation(sd, ctrl->value);
-//		break;
-//	case V4L2_CID_CHROMA_AGC:
-//		ov5640_set_chroma_agc(sd, ctrl->value);
-//		break;
-//	case V4L2_CID_CHROMA_GAIN:
-//		ov5640_set_chroma_gain(sd, ctrl->value);
-//		break;
-//	case V4L2_CID_COLOR_KILLER:
-//		ov5640_set_color_killer(sd, ctrl->value);
-//		break;
-
-        case V4L2_CID_COLORFX:
-                ov5640_set_colorfx(client, ctrl->value);
-                break;
-#if 0
-//	case V4L2_CID_AUTOBRIGHTNESS:
-//		ov5640_set_autobrightness(sd, ctrl->value);
-//		break;
-
-        case V4L2_CID_BAND_STOP_FILTER:
-                ov5640_set_band_stop_filter(sd, ctrl->value);
-                break;
-
-//	case V4L2_CID_ROTATE:
-//		ov5640_set_rotate(sd, ctrl->value);
-//		break;
-//	case V4L2_CID_BG_COLOR:
-//		ov5640_set_bg_color(sd, ctrl->value);
-//		break;
-
-        case V4L2_CID_EXPOSURE_AUTO:
-                ov5640_set_exposure_auto(sd, ctrl->value);
-                break;
-
-//	case V4L2_CID_EXPOSURE_ABSOLUTE:
-//	case V4L2_CID_EXPOSURE_AUTO_PRIORITY:
-//	case V4L2_CID_PAN_RELATIVE:
-//	case V4L2_CID_TILT_RELATIVE:
-//	case V4L2_CID_PAN_RESET:
-//	case V4L2_CID_TILT_RESET:
-//	case V4L2_CID_PAN_ABSOLUTE:
-//	case V4L2_CID_TILT_ABSOLUTE:
-//	case V4L2_CID_FOCUS_ABSOLUTE:
-//	case V4L2_CID_FOCUS_RELATIVE:
-//	case V4L2_CID_FOCUS_AUTO:
-//	case V4L2_CID_ZOOM_ABSOLUTE:
-//	case V4L2_CID_ZOOM_RELATIVE:
-//	case V4L2_CID_ZOOM_CONTINUOUS:
-//	case V4L2_CID_IRIS_ABSOLUTE:
-//	case V4L2_CID_IRIS_RELATIVE:
-//	case V4L2_CID_PRIVACY:
-
-        case V4L2_CID_SCENE_EXPOSURE:
-                ov5640_set_scene_exposure(sd, ctrl->value);
-                break;
-#endif
-        /* add by cym 20130812 */
-      //  case V4L2_CID_CAMERA_SET_AUTO_FOCUS:
-              //  printk("auto focus\n");
-              //  err = ov5640_sensor_s_single_af(sd);
-              break;
-        /* end add */
-        default:
-                OV_ERR("invalid control ctrl: %s\n", v4l2_ctrl_get_name(ctrl->id));
-                return (-EINVAL);
-        }
-
-        return (ret);
-}
 
 
 
@@ -4512,6 +4498,8 @@ static int ov5640_set_params(struct v4l2_subdev *sd, u32 *width, u32 *height, en
         printk(KERN_ERR "Unsupported win size\n");
         return -EINVAL;
     }
+
+
     priv->win = new_win;
 
     priv->rect.left = 0;
@@ -4522,7 +4510,7 @@ static int ov5640_set_params(struct v4l2_subdev *sd, u32 *width, u32 *height, en
     *width = priv->win->width;
     *height = priv->win->height;
 
-     printk("%s....%d\n",__FUNCTION__,__LINE__);
+    printk("%s....%d\n",__FUNCTION__,__LINE__);
 
     return 0;
 }
@@ -4530,6 +4518,7 @@ static int ov5640_set_params(struct v4l2_subdev *sd, u32 *width, u32 *height, en
 /****************************************************************************************
  * control functions
  */
+
 
 static int ov5640_s_ctrl(struct v4l2_ctrl *ctrl)
 {
@@ -4539,56 +4528,74 @@ static int ov5640_s_ctrl(struct v4l2_ctrl *ctrl)
 
     OV_INFO("%s: control ctrl- %s\n", __func__, v4l2_ctrl_get_name(ctrl->id));
 
-    return;
 
     switch (ctrl->id) {
-        case V4L2_CID_BRIGHTNESS:
-            ov5640_set_brightness(sd, ctrl->val);
-            break;
+    case V4L2_CID_BRIGHTNESS:
+       // ov5640_set_brightness(sd, ctrl->val);  //not stable for kernel ,why? stop debug.
+        break;
 
-        case V4L2_CID_CONTRAST:
-            ov5640_set_contrast(sd, ctrl->val);
-            break;
+    case V4L2_CID_CONTRAST:
+        ov5640_set_contrast(sd, ctrl->val);
+        break;
 
-        case V4L2_CID_AUTO_WHITE_BALANCE:
-         //   ov5640_set_awb(sd, ctrl->value);
-            break;
+    case V4L2_CID_AUTO_WHITE_BALANCE:
+        //   ov5640_set_awb(sd, ctrl->value);
+        break;
 
-        case V4L2_CID_EXPOSURE:
-            ov5640_set_exposure_level(sd, ctrl->val);
-            break;
+    case V4L2_CID_EXPOSURE:
+        ov5640_set_exposure_level(sd, ctrl->val);
+        break;
 
-        case V4L2_CID_GAIN:
-          //    ov5640_set_gain(sd, ctrl->val);
-            break;
+    case V4L2_CID_GAIN:
+        //    ov5640_set_gain(sd, ctrl->val);
+        break;
 
-        case V4L2_CID_HFLIP:
-             ov5640_set_flip(client, ctrl);
-            break;
+    case V4L2_CID_HFLIP:
+        ov5640_set_flip(client, ctrl);
+        break;
 
-        case V4L2_CID_WHITE_BALANCE_TEMPERATURE:
-          //  set_white_balance_temperature(client, ctrl->val);
-            break;
+    case V4L2_CID_WHITE_BALANCE_TEMPERATURE:
+        //  set_white_balance_temperature(client, ctrl->val);
+        break;
 
-        case V4L2_CID_COLORFX:
-             ov5640_set_colorfx(client, ctrl->val);
-            break;
+    case V4L2_CID_COLORFX:
+        ov5640_set_colorfx(client, ctrl->val);
+        break;
 
-        case V4L2_CID_EXPOSURE_AUTO:
-           //  ov5640_set_exposure_auto(sd, ctrl->val);
-            break;
+    case V4L2_CID_EXPOSURE_AUTO:
+        //  ov5640_set_exposure_auto(sd, ctrl->val);
+        break;
 
-        case V4L2_CID_SCENE_EXPOSURE:
-           //  ov5640_set_scene_exposure(sd, ctrl->val);
-            break;
+    case V4L2_CID_SCENE_EXPOSURE:
+        //  ov5640_set_scene_exposure(sd, ctrl->val);
+        break;
 
-        case V4L2_CID_PRIVATE_PREV_CAPT:
-           // sp2518_set_prev_capt_mode(sd, ctrl);
-            break;
+    case V4L2_CID_PRIVATE_PREV_CAPT:
+        // sp2518_set_prev_capt_mode(sd, ctrl);
+        break;
 
-        default:
-            dev_err(&client->dev, "%s: invalid control id %d\n", __func__, ctrl->id);
-            return -EINVAL;
+    case V4L2_CID_FOCUS_AUTO:  //dg add focus 2015-11-03
+      {
+
+          if(ctrl->val)
+          {
+            // ov5640_sensor_s_single_af(sd);
+              OV5640_FOCUS_AD5820_Single_Focus();
+              g_bpicturing = true;
+          }
+          else
+          {
+            // ov5640_sensor_s_release_af(sd);
+             OV5640_FOCUS_AD5820_Cancel_Focus();
+             g_bpicturing =false;
+
+          }
+
+      }
+      break;
+    default:
+        dev_err(&client->dev, "%s: invalid control id %d\n", __func__, ctrl->id);
+        return -EINVAL;
     }
 
     return ret;
@@ -4602,25 +4609,25 @@ static const struct v4l2_ctrl_ops ov5640_ctrl_ops = {
 };
 
 static const struct v4l2_ctrl_config ov5640_custom_ctrls[] = {
-    {
-        .ops    = &ov5640_ctrl_ops,
-        .id     = V4L2_CID_SCENE_EXPOSURE,
-        .type   = V4L2_CTRL_TYPE_INTEGER,
-        .name   = "SceneExposure",
-        .min    = 0,
-        .max    = 1,
-        .def    = 0,
-        .step   = 1,
-    }, {
-        .ops    = &ov5640_ctrl_ops,
-        .id     = V4L2_CID_PRIVATE_PREV_CAPT,
-        .type   = V4L2_CTRL_TYPE_INTEGER,
-        .name   = "PrevCapt",
-        .min    = 0,
-        .max    = 1,
-        .def    = 0,
-        .step   = 1,
-    }
+{
+    .ops    = &ov5640_ctrl_ops,
+    .id     = V4L2_CID_SCENE_EXPOSURE,
+    .type   = V4L2_CTRL_TYPE_INTEGER,
+    .name   = "SceneExposure",
+    .min    = 0,
+    .max    = 1,
+    .def    = 0,
+    .step   = 1,
+}, {
+    .ops    = &ov5640_ctrl_ops,
+    .id     = V4L2_CID_PRIVATE_PREV_CAPT,
+    .type   = V4L2_CTRL_TYPE_INTEGER,
+    .name   = "PrevCapt",
+    .min    = 0,
+    .max    = 1,
+    .def    = 0,
+    .step   = 1,
+}
 };
 
 static int ov5640_initialize_ctrls(struct ov5640_priv *priv)
@@ -4628,22 +4635,30 @@ static int ov5640_initialize_ctrls(struct ov5640_priv *priv)
     v4l2_ctrl_handler_init(&priv->hdl, NUM_CTRLS);
 
     /* standard ctrls */
+
+    priv->focus = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
+            V4L2_CID_FOCUS_AUTO, 0, 1, 1, 0);
+    if (!priv->focus) {
+        pr_err("%s: failed to create focus ctrl\n", __func__);
+        return -1;
+    }
+
     priv->pbrightness = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_BRIGHTNESS, 0, 6, 1, 0);
+                                          V4L2_CID_BRIGHTNESS, 0, 6, 1, 0);
     if (!priv->pbrightness) {
         printk(KERN_ERR "%s: failed to create brightness ctrl\n", __func__);
         return -ENOENT;
     }
 
     priv->pcontrast = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_CONTRAST, -6, 6, 1, 0);
+                                        V4L2_CID_CONTRAST, -6, 6, 1, 0);
     if (!priv->pcontrast) {
         printk(KERN_ERR "%s: failed to create contrast ctrl\n", __func__);
         return -ENOENT;
     }
 
     priv->pauto_white_balance = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_AUTO_WHITE_BALANCE, 0, 1, 1, 1);
+                                                  V4L2_CID_AUTO_WHITE_BALANCE, 0, 1, 1, 1);
     if (!priv->pauto_white_balance) {
         printk(KERN_ERR "%s: failed to create auto_white_balance ctrl\n", __func__);
         return -ENOENT;
@@ -4651,7 +4666,7 @@ static int ov5640_initialize_ctrls(struct ov5640_priv *priv)
 
 #if 0
     priv->pexposure = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_EXPOSURE, 0, 0xFFFF, 1, 500);
+                                        V4L2_CID_EXPOSURE, 0, 0xFFFF, 1, 500);
     if (!priv->pexposure) {
         printk(KERN_ERR "%s: failed to create exposure ctrl\n", __func__);
         return -ENOENT;
@@ -4659,21 +4674,21 @@ static int ov5640_initialize_ctrls(struct ov5640_priv *priv)
 #endif
 
     priv->pgain = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_GAIN, 0, 0xFF, 1, 128);
+                                    V4L2_CID_GAIN, 0, 0xFF, 1, 128);
     if (!priv->pgain) {
         printk(KERN_ERR "%s: failed to create gain ctrl\n", __func__);
         return -ENOENT;
     }
 
     priv->phflip = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_HFLIP, 0, 1, 1, 0);
+                                     V4L2_CID_HFLIP, 0, 1, 1, 0);
     if (!priv->phflip) {
         printk(KERN_ERR "%s: failed to create hflip ctrl\n", __func__);
         return -ENOENT;
     }
 
     priv->pwhite_balance_temperature = v4l2_ctrl_new_std(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_WHITE_BALANCE_TEMPERATURE, 0, 3, 1, 1);
+                                                         V4L2_CID_WHITE_BALANCE_TEMPERATURE, 0, 3, 1, 1);
     if (!priv->pwhite_balance_temperature) {
         printk(KERN_ERR "%s: failed to create white_balance_temperature ctrl\n", __func__);
         return -ENOENT;
@@ -4681,14 +4696,14 @@ static int ov5640_initialize_ctrls(struct ov5640_priv *priv)
 
     /* standard menus */
     priv->pcolorfx = v4l2_ctrl_new_std_menu(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_COLORFX, 3, 0, 0);
+                                            V4L2_CID_COLORFX, 3, 0, 0);
     if (!priv->pcolorfx) {
         printk(KERN_ERR "%s: failed to create colorfx ctrl\n", __func__);
         return -ENOENT;
     }
 
     priv->pexposure_auto = v4l2_ctrl_new_std_menu(&priv->hdl, &ov5640_ctrl_ops,
-            V4L2_CID_EXPOSURE_AUTO, 1, 0, 1);
+                                                  V4L2_CID_EXPOSURE_AUTO, 1, 0, 1);
     if (!priv->pexposure_auto) {
         printk(KERN_ERR "%s: failed to create exposure_auto ctrl\n", __func__);
         return -ENOENT;
@@ -4780,22 +4795,22 @@ static int ov5640_enum_framesizes(struct v4l2_subdev *sd, struct v4l2_frmsizeenu
     }
 
     switch (fsize->pixel_format) {
-        case V4L2_PIX_FMT_YUV420:
-        case V4L2_PIX_FMT_YUV422P:
-        case V4L2_PIX_FMT_NV12:
-        case V4L2_PIX_FMT_YUYV:
-            fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-            fsize->discrete.width = 640;//ov5645_win[fsize->index]->width;
-            fsize->discrete.height = 480;//ov5645_win[fsize->index]->height;
-            break;
-        default:
-            dev_err(&client->dev, "pixel_format(%d) is Unsupported %s \n", fsize->pixel_format, __func__);
-            return -EINVAL;
+    case V4L2_PIX_FMT_YUV420:
+    case V4L2_PIX_FMT_YUV422P:
+    case V4L2_PIX_FMT_NV12:
+    case V4L2_PIX_FMT_YUYV:
+        fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+        fsize->discrete.width = 640;//ov5645_win[fsize->index]->width;
+        fsize->discrete.height = 480;//ov5645_win[fsize->index]->height;
+        break;
+    default:
+        dev_err(&client->dev, "pixel_format(%d) is Unsupported %s \n", fsize->pixel_format, __func__);
+        return -EINVAL;
     }
 
-     //printk("type %d, width %d, height %d\n", V4L2_FRMSIZE_TYPE_DISCRETE, fsize->discrete.width, fsize->discrete.height);
+    //printk("type %d, width %d, height %d\n", V4L2_FRMSIZE_TYPE_DISCRETE, fsize->discrete.width, fsize->discrete.height);
 
-     printk("%s,%d,type %d, width %d, height %d\n", __func__,__LINE__, V4L2_FRMSIZE_TYPE_DISCRETE, fsize->discrete.width, fsize->discrete.height);
+    printk("%s,%d,type %d, width %d, height %d\n", __func__,__LINE__, V4L2_FRMSIZE_TYPE_DISCRETE, fsize->discrete.width, fsize->discrete.height);
 
     return 0;
 }
@@ -4803,7 +4818,7 @@ static int ov5640_enum_framesizes(struct v4l2_subdev *sd, struct v4l2_frmsizeenu
 
 
 static int ov5640_enum_mbus_fmt(struct v4l2_subdev *sd, unsigned int index,
-        enum v4l2_mbus_pixelcode *code)
+                                enum v4l2_mbus_pixelcode *code)
 {
     if (index >= ARRAY_SIZE(ov5640_cfmts))
         return -EINVAL;
@@ -4845,7 +4860,7 @@ static int ov5640_g_mbus_fmt(struct v4l2_subdev *sd, struct v4l2_mbus_framefmt *
 
 
 static int ov5640_try_mbus_fmt(struct v4l2_subdev *sd,
-        struct v4l2_mbus_framefmt *mf)
+                               struct v4l2_mbus_framefmt *mf)
 {
     struct i2c_client *client = v4l2_get_subdevdata(sd);
     struct ov5640_priv *priv = to_ov5640(client);
@@ -4918,12 +4933,12 @@ static const struct v4l2_subdev_video_ops ov5640_subdev_video_ops = {
     .g_mbus_fmt             = ov5640_g_mbus_fmt, //sp2518_g_mbus_fmt,
     .try_mbus_fmt           = ov5640_try_mbus_fmt, //sp2518_try_mbus_fmt,
     .s_mbus_fmt             = ov5640_s_mbus_fmt, //sp2518_s_mbus_fmt,
- };
+};
 
 /**
  * pad ops */
 static int ov5640_s_fmt(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh,
-        struct v4l2_subdev_format *fmt)
+                        struct v4l2_subdev_format *fmt)
 {
     struct v4l2_mbus_framefmt *mf = &fmt->format;
     printk("%s: %dx%d\n", __func__, mf->width, mf->height);
@@ -4951,8 +4966,8 @@ static const struct v4l2_subdev_ops ov5640_subdev_ops = {
  * media_entity_operations
  */
 static int ov5640_link_setup(struct media_entity *entity,
-        const struct media_pad *local,
-        const struct media_pad *remote, u32 flags)
+                             const struct media_pad *local,
+                             const struct media_pad *remote, u32 flags)
 {
     printk("%s\n", __func__);
     return 0;
@@ -4971,9 +4986,9 @@ static void ov5640_priv_init(struct ov5640_priv * priv)
 {
     priv->model = V4L2_IDENT_AMBIGUOUS;
     priv->prev_capt_mode = PREVIEW_MODE;
- //   priv->timeperframe.denominator = 12;//30;
- //   priv->timeperframe.numerator = 1;
- //   priv->win = &ov5640_wins_vga;
+    //   priv->timeperframe.denominator = 12;//30;
+    //   priv->timeperframe.numerator = 1;
+    //   priv->win = &ov5640_wins_vga;
 }
 
 
@@ -4998,7 +5013,7 @@ static int ov5640_probe(struct i2c_client *client, const struct i2c_device_id *i
     v4l2_i2c_subdev_init(sd, client, &ov5640_subdev_ops);
 
     sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
-  //  priv->pad.flags = MEDIA_PAD_FL_SOURCE;
+    //  priv->pad.flags = MEDIA_PAD_FL_SOURCE;
     sd->entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
     sd->entity.ops  = &ov5640_media_ops;
     if (media_entity_init(&sd->entity, 1, &priv->pad, 0)) {
@@ -5016,7 +5031,7 @@ static int ov5640_probe(struct i2c_client *client, const struct i2c_device_id *i
 
     g_client = client;
 
-   printk("%s:%d.......\n", __func__, __LINE__);
+    printk("%s:%d.......\n", __func__, __LINE__);
 
 
     return 0;
@@ -5036,8 +5051,8 @@ static int ov5640_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id ov5640_id[] = {
-    { MODULE_NAME, 0 },
-    { }
+{ MODULE_NAME, 0 },
+{ }
 };
 
 MODULE_DEVICE_TABLE(i2c, ov5640_id);
